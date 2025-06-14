@@ -188,8 +188,15 @@
             method: "POST",
             body: formData,
           });
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error("Backend error:", errorText);
+            output.textContent = `Server error: ${res.status}`;
+            return;
+          }
 
           const data = await response.json();
+          console.log(data);
           transcriptBox.textContent = data.transcription || "No speech detected.";
         } catch (err) {
           transcriptBox.textContent = "Error transcribing speech.";
