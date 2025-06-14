@@ -176,6 +176,7 @@
       mediaRecorder.ondataavailable = event => {
         audioChunks.push(event.data);
       };
+      console.log(mediaRecorder.mimeType);
 
       mediaRecorder.onstop = async () => {
         transcriptBox.textContent = "Transcribing...";
