@@ -156,52 +156,64 @@
   }
 </style>
 
+<button id="record">Record</button>
+<p id="output">Transcript will show up here</p>
+
 <script>
-  let mediaRecorder: MediaRecorder | null = null;
-  let audioChunks: Blob[] = [];
+  const startBtn = document.getElementById("startRecording");
+  const stopBtn = document.getElementById("stopRecording");
+  const transcriptBox = document.getElementById("transcript");
 
-  const startButton = document.getElementById('startRecording');
-  const stopButton = document.getElementById('stopRecording');
-  const transcript = document.getElementById('transcript');
-  const aslAnimation = document.getElementById('aslAnimation');
+  let mediaRecorder;
+  let audioChunks = [];
 
-  startButton?.addEventListener('click', async () => {
+  startBtn.onclick = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorder = new MediaRecorder(stream);
-      
-      mediaRecorder.ondataavailable = (event) => {
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = event => {
         audioChunks.push(event.data);
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-        // Here you would typically send the audio to your backend for processing
-        // For now, we'll just simulate the translation
-        if (transcript) transcript.textContent = "Processing speech...";
-        if (aslAnimation) aslAnimation.textContent = "Converting to ASL...";
-        
-        // Simulate processing delay
-        setTimeout(() => {
-          if (transcript) transcript.textContent = "This is a simulated transcript of your speech.";
-          if (aslAnimation) aslAnimation.textContent = "ASL animation would appear here";
-        }, 2000);
+        transcriptBox.textContent = "Transcribing...";
+        const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+        const formData = new FormData();
+        formData.append("file", audioBlob, "audio.wav");
+
+        try {
+          const response = await fetch("https://flaskapispeech2text.onrender.com/transcribe", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await response.json();
+          transcriptBox.textContent = data.transcription || "No speech detected.";
+        } catch (err) {
+          transcriptBox.textContent = "Error transcribing speech.";
+          console.error("Transcription error:", err);
+        }
+
+        // Stop the stream's audio tracks
+        stream.getTracks().forEach(track => track.stop());
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
       };
 
       mediaRecorder.start();
-      startButton.setAttribute('disabled', 'true');
-      stopButton?.removeAttribute('disabled');
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
     } catch (err) {
-      console.error('Error accessing microphone:', err);
-      alert('Error accessing microphone. Please ensure you have granted microphone permissions.');
+      transcriptBox.textContent = "Microphone access denied.";
+      console.error("Microphone error:", err);
     }
-  });
+  };
 
-  stopButton?.addEventListener('click', () => {
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+  stopBtn.onclick = () => {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
       mediaRecorder.stop();
-      startButton?.removeAttribute('disabled');
-      stopButton.setAttribute('disabled', 'true');
     }
-  });
-</script> 
+  };
+</script>
