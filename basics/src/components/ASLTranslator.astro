@@ -45,6 +45,7 @@
         <div id="aslAnimation" class="asl-animation">
           <div class="placeholder-content">
             <span class="placeholder-icon">👋</span>
+            <video id="outputVideo" controls width="600"></video>
             <p>ASL signs will be displayed here...</p>
           </div>
         </div>
@@ -460,6 +461,22 @@
       statusText.textContent = text;
     }
   }
+  async function fetchVideo() {
+  const response = await fetch('https://flaskapitext2video.onrender.com/translate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: 'HELLO' })
+  });
+
+  if (!response.ok) {
+    console.error('Failed to fetch video');
+    return;
+  }
+
+  const blob = await response.blob();
+  const videoUrl = URL.createObjectURL(blob);
+  document.getElementById('outputVideo').src = videoUrl;
+};
 
   startBtn?.addEventListener('click', async () => {
     try {
@@ -475,6 +492,7 @@
       aslAnimation.textContent = "Waiting for speech...";
       startBtn.disabled = true;
       stopBtn.disabled = false;
+      fetchVideo();
 
       // Update status indicators
       updateStatus(transcriptStatus, transcriptStatusText, 'recording', 'Recording');
@@ -545,4 +563,6 @@
       stopBtn.disabled = true;
     });
   });
+  
+
 </script>
