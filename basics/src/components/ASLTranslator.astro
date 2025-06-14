@@ -34,27 +34,155 @@
 </div>
 
 <style>
-  /* Your existing styles unchanged */
+  .translator-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  .translator-card {
+    background: var(--lw-card-bg);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    width: 100%;
+    max-width: 800px;
+  }
+
+  h1 {
+    margin: 0 0 2rem;
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--lw-text);
+    text-align: center;
+  }
+
+  h3 {
+    margin: 0 0 1rem;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--lw-text);
+  }
+
+  .input-section, .output-section {
+    margin-bottom: 2rem;
+  }
+
+  .controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .primary {
+    background: var(--lw-link);
+    color: white;
+  }
+
+  .primary:hover:not(:disabled) {
+    background: #1557b0;
+  }
+
+  .secondary {
+    background: #f0f0f0;
+    color: var(--lw-text);
+  }
+
+  .secondary:hover:not(:disabled) {
+    background: #e0e0e0;
+  }
+
+  .transcript-box, .asl-display {
+    background: #f8f9fa;
+    border: 1px solid var(--lw-border);
+    border-radius: 6px;
+    padding: 1rem;
+  }
+
+  .transcript-content {
+    min-height: 100px;
+    color: #666;
+  }
+
+  .asl-animation {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+  }
+
+  @media (max-width: 768px) {
+    .translator-container {
+      padding: 1rem;
+    }
+
+    .translator-card {
+      padding: 1.5rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+    }
+
+    .controls {
+      flex-direction: column;
+    }
+
+    .button {
+      width: 100%;
+      justify-content: center;
+    }
+  }
 </style>
 
 <script>
-  let audioContext;
-  let recorder;
-  let gumStream;
+  let audioContext: AudioContext | null = null;
+  let recorder: Recorder | null = null;
+  let gumStream: MediaStream | null = null;
 
-  const startBtn = document.getElementById("startRecording");
-  const stopBtn = document.getElementById("stopRecording");
-  const transcriptBox = document.getElementById("transcript");
+  const startBtn = document.getElementById("startRecording") as HTMLButtonElement;
+  const stopBtn = document.getElementById("stopRecording") as HTMLButtonElement;
+  const transcriptBox = document.getElementById("transcript") as HTMLDivElement;
+  const aslAnimation = document.getElementById("aslAnimation") as HTMLDivElement;
 
-  // Recorder class (your custom minimal implementation)
+  if (!startBtn || !stopBtn || !transcriptBox || !aslAnimation) {
+    console.error("Required elements not found");
+  }
+
   class Recorder {
-    constructor(source) {
-      this.context = source.context;
-      this.node = (this.context.createScriptProcessor || this.context.createJavaScriptNode).call(this.context, 4096, 1, 1);
+    private context: AudioContext;
+    private node: ScriptProcessorNode;
+    private buffer: Float32Array[];
+    private recording: boolean;
+
+    constructor(source: MediaStreamAudioSourceNode) {
+      this.context = source.context as AudioContext;
+      this.node = this.context.createScriptProcessor(4096, 1, 1);
       this.buffer = [];
       this.recording = false;
 
-      this.node.onaudioprocess = (e) => {
+      this.node.onaudioprocess = (e: AudioProcessingEvent) => {
         if (!this.recording) return;
         this.buffer.push(new Float32Array(e.inputBuffer.getChannelData(0)));
       };
@@ -62,75 +190,75 @@
       this.node.connect(this.context.destination);
     }
 
-    record() {
+    record(): void {
       this.recording = true;
     }
 
-    stop() {
+    stop(): void {
       this.recording = false;
     }
 
-    exportWAV(cb) {
-      let flatBuffer = flattenArray(this.buffer);
-      let wavBlob = encodeWAV(flatBuffer, this.context.sampleRate);
+    exportWAV(cb: (blob: Blob) => void): void {
+      let flatBuffer = this.flattenArray();
+      let wavBlob = this.encodeWAV(flatBuffer);
       cb(wavBlob);
     }
-  }
 
-  function flattenArray(channelBuffer) {
-    let length = 0;
-    for (let i = 0; i < channelBuffer.length; i++) length += channelBuffer[i].length;
-    let result = new Float32Array(length);
-    let offset = 0;
-    for (let i = 0; i < channelBuffer.length; i++) {
-      result.set(channelBuffer[i], offset);
-      offset += channelBuffer[i].length;
+    private flattenArray(): Float32Array {
+      let length = 0;
+      for (let i = 0; i < this.buffer.length; i++) length += this.buffer[i].length;
+      let result = new Float32Array(length);
+      let offset = 0;
+      for (let i = 0; i < this.buffer.length; i++) {
+        result.set(this.buffer[i], offset);
+        offset += this.buffer[i].length;
+      }
+      return result;
     }
-    return result;
-  }
 
-  function encodeWAV(samples, sampleRate) {
-    const buffer = new ArrayBuffer(44 + samples.length * 2);
-    const view = new DataView(buffer);
+    private encodeWAV(samples: Float32Array): Blob {
+      const buffer = new ArrayBuffer(44 + samples.length * 2);
+      const view = new DataView(buffer);
 
-    writeString(view, 0, 'RIFF');
-    view.setUint32(4, 36 + samples.length * 2, true);
-    writeString(view, 8, 'WAVE');
+      this.writeString(view, 0, 'RIFF');
+      view.setUint32(4, 36 + samples.length * 2, true);
+      this.writeString(view, 8, 'WAVE');
 
-    writeString(view, 12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * 2, true);
-    view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true);
+      this.writeString(view, 12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, this.context.sampleRate, true);
+      view.setUint32(28, this.context.sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
 
-    writeString(view, 36, 'data');
-    view.setUint32(40, samples.length * 2, true);
+      this.writeString(view, 36, 'data');
+      view.setUint32(40, samples.length * 2, true);
 
-    floatTo16BitPCM(view, 44, samples);
+      this.floatTo16BitPCM(view, 44, samples);
 
-    return new Blob([view], { type: 'audio/wav' });
-  }
+      return new Blob([view], { type: 'audio/wav' });
+    }
 
-  function writeString(view, offset, string) {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
+    private writeString(view: DataView, offset: number, string: string): void {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    }
+
+    private floatTo16BitPCM(output: DataView, offset: number, input: Float32Array): void {
+      for (let i = 0; i < input.length; i++, offset += 2) {
+        let s = Math.max(-1, Math.min(1, input[i]));
+        s = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        output.setInt16(offset, s, true);
+      }
     }
   }
 
-  function floatTo16BitPCM(output, offset, input) {
-    for (let i = 0; i < input.length; i++, offset += 2) {
-      let s = Math.max(-1, Math.min(1, input[i]));
-      s = s < 0 ? s * 0x8000 : s * 0x7FFF;
-      output.setInt16(offset, s, true);
-    }
-  }
-
-  startBtn.onclick = async () => {
+  startBtn?.addEventListener('click', async () => {
     try {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audioContext = new AudioContext();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       gumStream = stream;
 
@@ -139,23 +267,26 @@
       recorder.record();
 
       transcriptBox.textContent = "Recording...";
+      aslAnimation.textContent = "Waiting for speech...";
       startBtn.disabled = true;
       stopBtn.disabled = false;
     } catch (err) {
       transcriptBox.textContent = "Microphone access denied or error.";
+      aslAnimation.textContent = "Error accessing microphone";
       console.error(err);
     }
-  };
+  });
 
-  stopBtn.onclick = () => {
-    if (!recorder) return;
+  stopBtn?.addEventListener('click', () => {
+    if (!recorder || !gumStream) return;
 
     recorder.stop();
     gumStream.getAudioTracks().forEach(track => track.stop());
 
     transcriptBox.textContent = "Processing audio...";
+    aslAnimation.textContent = "Converting to ASL...";
+    
     recorder.exportWAV(async (blob) => {
-      // Upload WAV blob to backend
       const formData = new FormData();
       formData.append('file', blob, 'audio.wav');
 
@@ -169,18 +300,24 @@
           const errorText = await response.text();
           console.error("Server error:", errorText);
           transcriptBox.textContent = `Server error: ${response.status}`;
+          aslAnimation.textContent = "Error processing speech";
           return;
         }
 
         const data = await response.json();
         transcriptBox.textContent = data.transcription || "No speech detected.";
+        
+        // Here you would typically process the transcription to ASL
+        // For now, we'll just show a placeholder
+        aslAnimation.textContent = "ASL translation would appear here";
       } catch (err) {
         transcriptBox.textContent = "Error transcribing speech.";
+        aslAnimation.textContent = "Error in translation";
         console.error(err);
       }
 
       startBtn.disabled = false;
       stopBtn.disabled = true;
     });
-  };
+  });
 </script>
