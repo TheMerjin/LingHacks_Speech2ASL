@@ -191,7 +191,7 @@
           if (!response.ok) {
             const errorText = await response.text();
             console.error("Backend error:", errorText);
-            output.textContent = `Server error: ${res.status}`;
+            output.textContent = `Server error: ${response.status}`;
             return;
           }
 
