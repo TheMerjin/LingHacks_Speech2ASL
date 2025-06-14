@@ -1,0 +1,207 @@
+<div class="translator-container">
+  <div class="translator-card">
+    <h1>Speech to ASL Translator</h1>
+    
+    <div class="input-section">
+      <div class="controls">
+        <button id="startRecording" class="button primary">
+          <span class="icon">🎤</span>
+          Start Recording
+        </button>
+        <button id="stopRecording" class="button secondary" disabled>
+          <span class="icon">⏹</span>
+          Stop Recording
+        </button>
+      </div>
+      
+      <div class="transcript-box">
+        <h3>Transcript</h3>
+        <div id="transcript" class="transcript-content">
+          Your speech will appear here...
+        </div>
+      </div>
+    </div>
+
+    <div class="output-section">
+      <h3>ASL Translation</h3>
+      <div class="asl-display">
+        <div id="aslAnimation" class="asl-animation">
+          ASL signs will be displayed here...
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .translator-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  .translator-card {
+    background: var(--lw-card-bg);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    width: 100%;
+    max-width: 800px;
+  }
+
+  h1 {
+    margin: 0 0 2rem;
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--lw-text);
+    text-align: center;
+  }
+
+  h3 {
+    margin: 0 0 1rem;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--lw-text);
+  }
+
+  .input-section, .output-section {
+    margin-bottom: 2rem;
+  }
+
+  .controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .primary {
+    background: var(--lw-link);
+    color: white;
+  }
+
+  .primary:hover:not(:disabled) {
+    background: #1557b0;
+  }
+
+  .secondary {
+    background: #f0f0f0;
+    color: var(--lw-text);
+  }
+
+  .secondary:hover:not(:disabled) {
+    background: #e0e0e0;
+  }
+
+  .transcript-box, .asl-display {
+    background: #f8f9fa;
+    border: 1px solid var(--lw-border);
+    border-radius: 6px;
+    padding: 1rem;
+  }
+
+  .transcript-content {
+    min-height: 100px;
+    color: #666;
+  }
+
+  .asl-animation {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+  }
+
+  @media (max-width: 768px) {
+    .translator-container {
+      padding: 1rem;
+    }
+
+    .translator-card {
+      padding: 1.5rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+    }
+
+    .controls {
+      flex-direction: column;
+    }
+
+    .button {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+
+<script>
+  let mediaRecorder: MediaRecorder | null = null;
+  let audioChunks: Blob[] = [];
+
+  const startButton = document.getElementById('startRecording');
+  const stopButton = document.getElementById('stopRecording');
+  const transcript = document.getElementById('transcript');
+  const aslAnimation = document.getElementById('aslAnimation');
+
+  startButton?.addEventListener('click', async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        // Here you would typically send the audio to your backend for processing
+        // For now, we'll just simulate the translation
+        if (transcript) transcript.textContent = "Processing speech...";
+        if (aslAnimation) aslAnimation.textContent = "Converting to ASL...";
+        
+        // Simulate processing delay
+        setTimeout(() => {
+          if (transcript) transcript.textContent = "This is a simulated transcript of your speech.";
+          if (aslAnimation) aslAnimation.textContent = "ASL animation would appear here";
+        }, 2000);
+      };
+
+      mediaRecorder.start();
+      startButton.setAttribute('disabled', 'true');
+      stopButton?.removeAttribute('disabled');
+    } catch (err) {
+      console.error('Error accessing microphone:', err);
+      alert('Error accessing microphone. Please ensure you have granted microphone permissions.');
+    }
+  });
+
+  stopButton?.addEventListener('click', () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      startButton?.removeAttribute('disabled');
+      stopButton.setAttribute('disabled', 'true');
+    }
+  });
+</script> 
