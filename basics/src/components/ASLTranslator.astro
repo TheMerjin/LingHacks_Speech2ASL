@@ -189,7 +189,7 @@
             body: formData,
           });
           if (!response.ok) {
-            const errorText = await res.text();
+            const errorText = await response.text();
             console.error("Backend error:", errorText);
             output.textContent = `Server error: ${res.status}`;
             return;
