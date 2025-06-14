@@ -43,9 +43,9 @@
       </div>
       <div class="asl-display">
         <div id="aslAnimation" class="asl-animation">
+          <video id="outputVideo" controls width="600" class="asl-video"></video>
           <div class="placeholder-content">
             <span class="placeholder-icon">👋</span>
-            <video id="outputVideo" controls width="600"></video>
             <p>ASL signs will be displayed here...</p>
           </div>
         </div>
@@ -271,8 +271,25 @@
     color: #666;
   }
 
+  .asl-video {
+    width: 100%;
+    max-width: 600px;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    display: none;
+  }
+
+  .asl-video:not([src=""]) {
+    display: block;
+  }
+
   .placeholder-content {
     text-align: center;
+    display: none;
+  }
+
+  .placeholder-content:not(:has(+ .asl-video[src])) {
+    display: block;
   }
 
   .placeholder-icon {
@@ -462,21 +479,24 @@
     }
   }
   async function fetchVideo() {
-  const response = await fetch('https://flaskapitext2video.onrender.com/translate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: 'HELLO' })
-  });
+    const response = await fetch('https://flaskapitext2video.onrender.com/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: 'HELLO' })
+    });
 
-  if (!response.ok) {
-    console.error('Failed to fetch video');
-    return;
+    if (!response.ok) {
+      console.error('Failed to fetch video');
+      return;
+    }
+
+    const blob = await response.blob();
+    const videoUrl = URL.createObjectURL(blob);
+    const videoElement = document.getElementById('outputVideo') as HTMLVideoElement;
+    if (videoElement) {
+      videoElement.src = videoUrl;
+    }
   }
-
-  const blob = await response.blob();
-  const videoUrl = URL.createObjectURL(blob);
-  document.getElementById('outputVideo').src = videoUrl;
-};
 
   startBtn?.addEventListener('click', async () => {
     try {
